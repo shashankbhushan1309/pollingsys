@@ -10,7 +10,7 @@
     "dev:server": "tsx watch server/src/server.ts",
     "dev:all": "concurrently \"npm run dev:server\" \"npm run dev\"",
     "start:server": "node dist-server/server.js",
-    "build:server": "tsc -p server/tsconfig.json",
+    "build:server": "tsc -p server/tsconfig.json && node -e \"require('fs').writeFileSync('dist-server/package.json', '{\\\"type\\\": \\\"commonjs\\\"}')\"",
     "lint": "eslint ."
   },
   "dependencies": {
