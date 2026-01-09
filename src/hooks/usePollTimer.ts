@@ -35,7 +35,7 @@ export function usePollTimer(totalTime: number, onTimeUp?: () => void, startedAt
     }
 
     const interval = setInterval(() => {
-      setRemainingTime((prev) => {
+      setRemainingTime((prev: number) => {
         const newTime = prev - 1
         if (newTime <= 0) {
           // We'll let the next render cycle handle the stop
