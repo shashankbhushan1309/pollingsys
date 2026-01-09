@@ -47,25 +47,25 @@ export function useSocket(onMessage: (message: SocketMessage) => void) {
 
     // --- Poll Events ---
     // --- Poll Events ---
-    socket.on("poll:state", (data) => handleEvent("poll:state", data))
-    socket.on("poll:created", (data) => handleEvent("poll:created", data))
-    socket.on("poll:started", (data) => handleEvent("poll:started", data))
-    socket.on("poll:activated", (data) => handleEvent("poll:activated", data))
-    socket.on("poll:ended", (data) => handleEvent("poll:ended", data))
+    socket.on("poll:state", (data: any) => handleEvent("poll:state", data))
+    socket.on("poll:created", (data: any) => handleEvent("poll:created", data))
+    socket.on("poll:started", (data: any) => handleEvent("poll:started", data))
+    socket.on("poll:activated", (data: any) => handleEvent("poll:activated", data))
+    socket.on("poll:ended", (data: any) => handleEvent("poll:ended", data))
 
     // [STRICT] Renamed from 'poll:results:update' to 'poll:liveUpdate'
-    socket.on("poll:liveUpdate", (data) => handleEvent("poll:liveUpdate", data))
+    socket.on("poll:liveUpdate", (data: any) => handleEvent("poll:liveUpdate", data))
     // Note: Mapped "poll:results:update" -> "poll:updated" for consistency if App expects "poll:updated"
     // Or we keep it distinct. Let's send transparently.
-    socket.on("poll:history", (data) => handleEvent("poll:history", data.history))
+    socket.on("poll:history", (data: any) => handleEvent("poll:history", data.history))
 
     // --- Voting Events ---
-    socket.on("vote:accepted", (data) => handleEvent("vote:accepted", data))
-    socket.on("vote:rejected", (data) => handleEvent("vote:rejected", data))
+    socket.on("vote:accepted", (data: any) => handleEvent("vote:accepted", data))
+    socket.on("vote:rejected", (data: any) => handleEvent("vote:rejected", data))
 
     // --- Chat Events ---
-    socket.on("chat:message", (data) => handleEvent("chat:message", data))
-    socket.on("chat:history", (data) => handleEvent("chat:history", data))
+    socket.on("chat:message", (data: any) => handleEvent("chat:message", data))
+    socket.on("chat:history", (data: any) => handleEvent("chat:history", data))
     socket.on("participants:update", (data: any) => handleEvent("participants:update", data))
     socket.on("student:removed", (data: any) => handleEvent("student:removed", data))
 
