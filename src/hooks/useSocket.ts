@@ -66,11 +66,11 @@ export function useSocket(onMessage: (message: SocketMessage) => void) {
     // --- Chat Events ---
     socket.on("chat:message", (data) => handleEvent("chat:message", data))
     socket.on("chat:history", (data) => handleEvent("chat:history", data))
-    socket.on("participants:update", (data) => handleEvent("participants:update", data))
-    socket.on("student:removed", (data) => handleEvent("student:removed", data))
+    socket.on("participants:update", (data: any) => handleEvent("participants:update", data))
+    socket.on("student:removed", (data: any) => handleEvent("student:removed", data))
 
     // --- System ---
-    socket.on("error", (data) => {
+    socket.on("error", (data: any) => {
       console.error("Socket Error:", data)
       handleEvent("error", data)
     })
