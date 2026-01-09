@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #7765DA;
+  --color-secondary: #5767D0;
+  --color-accent: #4F0DCE;
+
+  --color-bg-light: #F2F2F2;
+  --color-text-dark: #373737;
+  --color-text-muted: #6E6E6E;
+
+  --color-surface: #FFFFFF;
+}
+
+:root {
+  --primary: #7765DA;
+  --secondary: #5767D0;
+  --accent: #4F0DCE;
+  --bg-light: #F2F2F2;
+  --text-dark: #373737;
+  --text-muted: #6E6E6E;
+}
+
+body {
+  background-color: var(--bg-light);
+  color: var(--text-dark);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Utility Classes for Consistency */
+.btn-primary {
+  background-color: var(--primary);
+  color: white;
+  transition: all 0.2s;
+}
+
+.btn-primary:hover {
+  background-color: var(--accent);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.card {
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+  border: 1px solid #E5E7EB;
+}
