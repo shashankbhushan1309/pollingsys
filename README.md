@@ -98,8 +98,8 @@ npm install
 Create a `.env.local` file:
 
 ```env
-# MongoDB Connection
-MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net/polling_system
+mongodb+srv://<username>:<password>@<cluster-url>/<db-name>
+
 
 # For production
 NEXT_PUBLIC_API_URL=https://your-domain.com
