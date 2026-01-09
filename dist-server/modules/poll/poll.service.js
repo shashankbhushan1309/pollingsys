@@ -113,6 +113,13 @@ class PollService {
         }
         const pollIdStr = poll._id;
         const hasVoted = await poll_repository_1.pollRepository.hasVoted(pollIdStr, studentId);
+        // [FIX] Get Student Vote for Persistence
+        let votedOption = null;
+        if (hasVoted) {
+            const vote = await poll_repository_1.pollRepository.getStudentVote(pollIdStr, studentId);
+            if (vote)
+                votedOption = vote.optionId;
+        }
         // [FIX] Calculate Results for State Sync
         const counts = await poll_repository_1.pollRepository.getVoteCounts(pollIdStr);
         const detailedVotes = await poll_repository_1.pollRepository.getDetailedVotes(pollIdStr);
@@ -135,6 +142,7 @@ class PollService {
             duration: poll.duration,
             remainingTime,
             hasVoted,
+            votedOption, // [NEW] Send persisted option
             canVote: !hasVoted // Explicit flag for frontend
         };
         // Role-Based Filtering
@@ -249,8 +257,7 @@ class PollService {
                 // NO correctOptionIndex (unless final)
             };
             if (isFinal) {
-                // Final results: Students can see correct answer now?
-                // User said: "Student sees correct answer AFTER poll ends" -> YES.
+                // Final results: Students can see correct answer now
                 const finalStudentPayload = {
                     ...studentPayload,
                     correctOptionIndex: poll.correctOptionIndex

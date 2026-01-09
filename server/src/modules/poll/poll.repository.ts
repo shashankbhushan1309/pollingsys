@@ -47,6 +47,11 @@ export class PollRepository {
         return !!vote;
     }
 
+    // [NEW] Get student's vote for persistence
+    async getStudentVote(pollId: string, studentId: string): Promise<IVote | null> {
+        return await Vote.findOne({ pollId, studentId });
+    }
+
     // Get vote counts for a poll
     async getVoteCounts(pollId: string): Promise<Record<string, number>> {
         const votes = await Vote.find({ pollId });

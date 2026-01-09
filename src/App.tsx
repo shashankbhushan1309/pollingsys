@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Toaster, toast } from 'sonner'
 import { TeacherDashboard } from './components/TeacherDashboard'
 import { StudentInterface } from './components/StudentInterface'
@@ -35,6 +34,10 @@ function App() {
     const [hasVoted, setHasVoted] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
 
+    // [RESTORED] Ref to track if we are in the "3s Result Phase"
+    // This prevents the polling sync from clearing the screen immediately
+    const isEndingRef = useRef(false)
+
     // Socket Connection
     const { send, socketId } = useSocket((message) => {
         switch (message.type) {
@@ -54,28 +57,40 @@ function App() {
                         })
                     }
                 } else {
-                    setCurrentPoll(null)
-                    setHasVoted(false)
+                    // Only clear if we are NOT in the special 3s Post-Poll phase
+                    if (!isEndingRef.current) {
+                        setCurrentPoll(null)
+                        setHasVoted(false)
+                    }
                 }
                 break
 
             case 'poll:started':
-                console.log("Poll Started:", message.data)
+            case 'poll:activated': // [STRICT] Alias for Active Poll Start
+                console.log("Poll Started/Activated:", message.data)
                 setCurrentPoll(message.data)
                 setHasVoted(false)
                 setPollResults(null)
+                isEndingRef.current = false // Reset
                 toast.info("A new poll has started!")
                 break
 
-            case 'poll:updated':
+            case 'poll:created': // [STRICT] Just notify, don't change state if queued
+                if (message.data.status === 'ACTIVE') {
+                    // Should be handled by poll:activated/started, but good safety
+                } else {
+                    toast.success("New poll queued")
+                }
+                break
+
+            case 'poll:liveUpdate':
                 // Real-time results update
-                console.log("Poll Results Updated:", message.data)
-                if (currentPoll) {
-                    // Ensure we have context
+                console.log("Poll Live Update:", message.data)
+                if (currentPoll && currentPoll.pollId === message.data.pollId) {
                     setPollResults({
                         results: message.data.results,
                         totalVotes: message.data.totalVotes,
-                        detailedVotes: message.data.detailedVotes as any // [FIX] Include detailedVotes
+                        detailedVotes: message.data.detailedVotes as any
                     })
                 }
                 break
@@ -83,13 +98,35 @@ function App() {
             case 'poll:ended':
                 console.log("Poll Ended:", message.data)
                 toast.warning("The poll has ended.")
+
+                // 1. Show final results
                 setPollResults({
                     results: message.data.results,
                     totalVotes: message.data.totalVotes,
-                    detailedVotes: message.data.detailedVotes as any // [FIX] Include detailedVotes
-                }) // Final results
-                setCurrentPoll(null)
+                    detailedVotes: message.data.detailedVotes as any
+                })
+
+                // 2. [RESTORED] Enter 3s Result Phase
+                // Explicitly inject correct answer into currentPoll so UI renders it green
+                if (message.data.correctOptionIndex !== undefined) {
+                    setCurrentPoll((prev: any) => ({
+                        ...prev,
+                        correctOptionIndex: message.data.correctOptionIndex
+                    }))
+                }
+
+                isEndingRef.current = true
                 setIsSubmitting(false)
+
+                // 3. Clear after 3 seconds (Client Sync with Server Delay)
+                // Behavior: If next poll activates, 'poll:activated' will fire ~3s later and override this
+                // If no next poll, this clears to waiting screen. Correct.
+                setTimeout(() => {
+                    if (isEndingRef.current) { // Only clear if we haven't already started next poll
+                        setCurrentPoll(null)
+                        isEndingRef.current = false
+                    }
+                }, 3000)
                 break
 
             case 'poll:history':
@@ -118,6 +155,10 @@ function App() {
             case 'vote:accepted':
                 setHasVoted(true)
                 setIsSubmitting(false)
+                // [FIX] locally update votedOption so it propagates to UI
+                if (currentPoll) {
+                    setCurrentPoll((prev: any) => ({ ...prev, votedOption: message.data.optionId }))
+                }
                 toast.success("Vote submitted!")
                 break
 
@@ -406,6 +447,7 @@ function App() {
                     currentPoll={currentPoll}
                     results={pollResults}
                     hasVoted={hasVoted}
+                    votedOption={currentPoll?.votedOption} // [FIX] Pass voted option
                     onSubmitVote={handleVote}
                     isSubmitting={isSubmitting}
                     // Chat Props

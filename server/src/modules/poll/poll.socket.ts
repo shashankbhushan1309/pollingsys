@@ -24,6 +24,12 @@ export class PollSocket {
                     }
 
                     const state = await pollService.getPollState(studentId, role);
+
+                    // [NEW] Feature 3: Live Updates - Join voted room
+                    if (state.hasVoted) {
+                        socket.join("poll:voted");
+                    }
+
                     socket.emit("poll:state", state);
 
                     // Send history to EVERYONE on join
@@ -34,6 +40,8 @@ export class PollSocket {
                     socket.emit("error", { message: "Failed to sync state" });
                 }
             });
+
+            // ... (Teacher handlers)
 
             // 2. TEACHER: Create Poll
             socket.on("teacher:create_poll", async (data) => {
@@ -84,6 +92,17 @@ export class PollSocket {
                     const finalStudentId = studentId || socket.id;
 
                     await pollService.submitVote(pollId, finalStudentId, name, optionId);
+
+                    // [NEW] Feature 3: Live Updates - Join room immediately
+                    socket.join("poll:voted");
+
+                    // [FIX] Broadcast immediately so the *just joined* student gets the update
+                    const payload = await pollService.broadcastResults(pollId);
+
+                    // [GUARANTEE] Emit directly to self to bypass any room join latency
+                    if (payload) {
+                        socket.emit("poll:updated", payload);
+                    }
 
                     socket.emit("vote:accepted", { pollId, optionId });
                 } catch (err: any) {

@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card } from "@/components/ui/card"
 import { ChatPanel } from "./ChatPanel"
-import { MessageSquare, Plus } from "lucide-react"
+import { MessageSquare } from "lucide-react"
 
 interface TeacherDashboardProps {
   teacherId: string
@@ -112,14 +110,14 @@ export function TeacherDashboard({
                 <div key={option} className="group relative w-full bg-[#FAFAFA] rounded-md overflow-hidden border border-gray-200">
                   {/* Progress Bar Background */}
                   <div
-                    className="absolute top-0 left-0 h-full bg-[#5767D0] transition-all duration-1000 ease-out opacity-80"
+                    className="absolute top-0 left-0 h-full bg-[#4F0DCE] transition-all duration-1000 ease-out opacity-80"
                     style={{ width: `${result.percentage}%` }}
                   ></div>
 
                   {/* Content Layer */}
                   <div className="relative z-10 flex items-center justify-between w-full p-4 h-14">
                     <div className="flex items-center gap-4">
-                      <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-sm font-bold text-[#5767D0] shadow-sm">
+                      <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-sm font-bold text-[#4F0DCE] shadow-sm">
                         {index + 1}
                       </div>
                       <span className="font-semibold text-[#111111] max-w-[80%] truncate">

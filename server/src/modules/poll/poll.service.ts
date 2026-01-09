@@ -40,6 +40,9 @@ class PollService {
             createdBy: teacherId || "teacher-default",
         });
 
+        // [STRICT] Emit poll:created as required
+        this.io.emit("poll:created", poll);
+
         // 4. If ACTIVE, Start Timer & Broadcast
         if (status === 'ACTIVE') {
             this.startServerTimer((poll._id as unknown) as string, duration);
@@ -118,6 +121,13 @@ class PollService {
         const pollIdStr = (poll._id as unknown) as string;
         const hasVoted = await pollRepository.hasVoted(pollIdStr, studentId);
 
+        // [FIX] Get Student Vote for Persistence
+        let votedOption = null;
+        if (hasVoted) {
+            const vote = await pollRepository.getStudentVote(pollIdStr, studentId);
+            if (vote) votedOption = vote.optionId;
+        }
+
         // [FIX] Calculate Results for State Sync
         const counts = await pollRepository.getVoteCounts(pollIdStr);
         const detailedVotes = await pollRepository.getDetailedVotes(pollIdStr);
@@ -142,6 +152,7 @@ class PollService {
             duration: poll.duration,
             remainingTime,
             hasVoted,
+            votedOption, // [NEW] Send persisted option
             canVote: !hasVoted // Explicit flag for frontend
         };
 
@@ -175,25 +186,31 @@ class PollService {
     async endPoll(pollId: string) {
         if (!this.io) return;
 
-        // 1. End current poll
+        // 1. End current poll (set isActive=false)
         await pollRepository.deactivatePoll(pollId);
         if (this.currentTimeout) clearTimeout(this.currentTimeout);
         this.currentTimeout = null;
 
-        // 2. Broadcast Final Results
+        // 2. Broadcast Final Results IMMEDIATELY
         await this.broadcastResults(pollId, true); // true = final
 
-        // 3. Check Queue for Next Poll
-        const nextPoll = await pollRepository.getNextQueuedPoll();
-        if (nextPoll) {
-            // Activate Next Poll
-            const activated = await pollRepository.activatePoll((nextPoll._id as unknown) as string);
-            if (activated) {
-                // Determine remaining duration? It's a fresh start.
-                this.startServerTimer((activated._id as unknown) as string, activated.duration);
-                this.broadcastPollStarted(activated);
+        // 3. [STRICT] Server-Side 3-Second Result Phase
+        setTimeout(async () => {
+            if (!this.io) return;
+
+            // 4. Check Queue for Next Poll
+            const nextPoll = await pollRepository.getNextQueuedPoll();
+            if (nextPoll) {
+                // Activate Next Poll
+                const activated = await pollRepository.activatePoll((nextPoll._id as unknown) as string);
+                if (activated) {
+                    this.startServerTimer((activated._id as unknown) as string, activated.duration);
+
+                    // Broadcast Start (Handles sanitized poll:activated internal emission)
+                    this.broadcastPollStarted(activated);
+                }
             }
-        }
+        }, 3000); // Strict 3s delay
     }
 
     // Helper: Start Timer
@@ -232,10 +249,14 @@ class PollService {
 
         this.io.to("teacher").emit("poll:started", teacherPayload);
         this.io.to("student").emit("poll:started", studentPayload);
+
+        // [FIX] Also emit sanitized poll:activated for strict compliance
+        this.io.to("teacher").emit("poll:activated", teacherPayload);
+        this.io.to("student").emit("poll:activated", studentPayload);
     }
 
     // Helper: Broadcast Results
-    private async broadcastResults(pollId: string, isFinal: boolean = false) {
+    public async broadcastResults(pollId: string, isFinal: boolean = false) {
         if (!this.io) return;
 
         const counts = await pollRepository.getVoteCounts(pollId);
@@ -254,6 +275,7 @@ class PollService {
             }, {} as Record<string, { count: number, percentage: number }>);
 
             const basePayload = {
+                pollId,
                 results,
                 totalVotes
             };
@@ -271,8 +293,7 @@ class PollService {
             };
 
             if (isFinal) {
-                // Final results: Students can see correct answer now?
-                // User said: "Student sees correct answer AFTER poll ends" -> YES.
+                // Final results: Students can see correct answer now
                 const finalStudentPayload = {
                     ...studentPayload,
                     correctOptionIndex: poll.correctOptionIndex
@@ -286,10 +307,17 @@ class PollService {
                 this.io.emit("poll:history", { history });
             } else {
                 // Live update: NO correct answer for students
-                this.io.to("teacher").emit("poll:updated", teacherPayload);
-                this.io.to("student").emit("poll:updated", studentPayload);
+                // [FIX] Feature 3: Live Updates - Restrict to voted students
+                // [STRICT] Rename to poll:liveUpdate
+                this.io.to("poll:voted").emit("poll:liveUpdate", studentPayload);
+
+                // [FIX] Emit to teachers so they see live updates too
+                this.io.to("teacher").emit("poll:liveUpdate", teacherPayload);
             }
+
+            return studentPayload;
         }
+        return null;
     }
 
     async getHistory() {

@@ -41,6 +41,10 @@ class PollRepository {
         const vote = await vote_model_1.Vote.exists({ pollId, studentId });
         return !!vote;
     }
+    // [NEW] Get student's vote for persistence
+    async getStudentVote(pollId, studentId) {
+        return await vote_model_1.Vote.findOne({ pollId, studentId });
+    }
     // Get vote counts for a poll
     async getVoteCounts(pollId) {
         const votes = await vote_model_1.Vote.find({ pollId });

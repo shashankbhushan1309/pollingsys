@@ -46,10 +46,15 @@ export function useSocket(onMessage: (message: SocketMessage) => void) {
     }
 
     // --- Poll Events ---
+    // --- Poll Events ---
     socket.on("poll:state", (data) => handleEvent("poll:state", data))
+    socket.on("poll:created", (data) => handleEvent("poll:created", data))
     socket.on("poll:started", (data) => handleEvent("poll:started", data))
+    socket.on("poll:activated", (data) => handleEvent("poll:activated", data))
     socket.on("poll:ended", (data) => handleEvent("poll:ended", data))
-    socket.on("poll:results:update", (data) => handleEvent("poll:updated", data))
+
+    // [STRICT] Renamed from 'poll:results:update' to 'poll:liveUpdate'
+    socket.on("poll:liveUpdate", (data) => handleEvent("poll:liveUpdate", data))
     // Note: Mapped "poll:results:update" -> "poll:updated" for consistency if App expects "poll:updated"
     // Or we keep it distinct. Let's send transparently.
     socket.on("poll:history", (data) => handleEvent("poll:history", data.history))

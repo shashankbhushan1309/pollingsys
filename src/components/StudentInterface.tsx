@@ -12,6 +12,7 @@ interface StudentInterfaceProps {
   currentPoll: any
   results: any
   hasVoted: boolean
+  votedOption?: string | null // [NEW] Prop to track user's vote
   onSubmitVote: (selectedOption: string) => void
   isSubmitting: boolean
   chatMessages: any[]
@@ -26,17 +27,18 @@ export function StudentInterface({
   currentPoll,
   results,
   hasVoted,
+  votedOption, // [NEW] Destructure
   onSubmitVote,
   isSubmitting,
   chatMessages,
   participants,
   onSendMessage,
   currentUserId,
-  history = [] // [NEW] Accept history prop
+  history = []
 }: StudentInterfaceProps & { history?: any[] }) {
   const [selectedOption, setSelectedOption] = useState<string | null>(null)
   const [isChatOpen, setIsChatOpen] = useState(false)
-  const [showHistory, setShowHistory] = useState(false) // [NEW] Toggle history
+  const [showHistory, setShowHistory] = useState(false)
 
   // Parse startedAt to handle potential string/Date mismatch
   const startedAt = currentPoll?.startedAt ? new Date(currentPoll.startedAt).toISOString() : undefined
@@ -46,15 +48,6 @@ export function StudentInterface({
     undefined,
     startedAt
   )
-
-  // Helper for timer display
-  // Wait, I need to check usePollTimer return values. 
-  // Previous code used `remainingTime`. I will stick to it.
-  // Actually, I should just use `remainingTime` from the hook if I didn't change the hook signature.
-  // Checking previous file content... it was `const { remainingTime, reset } = usePollTimer(...)`
-  // I will assume that is valid.
-
-  // NOTE: Logic remains untouched. Restoring the hook call as it was.
 
   useEffect(() => {
     if (currentPoll?.duration) {
@@ -79,7 +72,6 @@ export function StudentInterface({
   return (
     <div className="min-h-screen bg-[#FFFFFF] relative font-sans flex flex-col">
       {/* Header with History/Logout (Subtle) */}
-      {/* Design cleanup: Move logout to top right corner, fixed or absolute */}
       <div className="absolute top-6 right-6 z-40 flex gap-4">
         <Button onClick={onLogout} variant="ghost" size="sm" className="text-[#6E6E6E] hover:text-[#373737] hover:bg-gray-100">
           Logout
@@ -91,7 +83,7 @@ export function StudentInterface({
         )}
       </div>
 
-      {/* Chat FAB (Updated Color) */}
+      {/* Chat FAB */}
       <button
         onClick={() => setIsChatOpen(!isChatOpen)}
         className="fixed bottom-6 right-6 w-14 h-14 bg-[#5767D0] rounded-full flex items-center justify-center shadow-lg shadow-[#5767D0]/30 hover:bg-[#4F0DCE] transition-all z-50 hover:scale-105 active:scale-95"
@@ -195,70 +187,68 @@ export function StudentInterface({
 
             {/* Options Section */}
             <div className="space-y-3">
-              {/* If Results are available (Has voted) */}
-              {hasVoted ? (
-                /* RESULTS VIEW */
+              {/* If Results are available (Has voted or Poll Ended) */}
+              {(hasVoted || currentPoll.correctOptionIndex !== undefined) ? (
+                /* LIVE & FINAL RESULTS VIEW */
                 <>
                   {currentPoll.options.map((option: string, index: number) => {
                     const result = results?.results[option] || { count: 0, percentage: 0 }
-                    const percentage = result.percentage
-                    // Colors for results: Use Primary Purple for the bar
+                    const percentage = result.percentage >= 0 ? result.percentage : 0 // Safety check
+
+                    const isMyVote = votedOption === option
+                    const isCorrect = currentPoll.correctOptionIndex === index
+
+                    let barColor = "#5767D0" // Purple default
+                    let borderColor = "border-gray-200"
+
+                    if (isCorrect) {
+                      barColor = "#22C55E" // Green for correct
+                      borderColor = "border-[#22C55E]"
+                    } else if (isMyVote) {
+                      borderColor = "border-[#5767D0] ring-2 ring-[#5767D0]/50"
+                    }
 
                     return (
-                      <div key={option} className="group relative w-full bg-[#FAFAFA] rounded-md overflow-hidden border border-gray-200">
-                        {/* Progress Bar Background */}
-                        <div
-                          className="absolute top-0 left-0 h-full bg-[#5767D0] transition-all duration-1000 ease-out opacity-80"
-                          style={{ width: `${percentage}%` }}
-                        ></div>
-
-                        {/* Content Layer */}
+                      <div key={option} className={`group relative w-full bg-[#FAFAFA] rounded-md overflow-hidden border ${borderColor} transition-all duration-300`}>
+                        <div className={`absolute top-0 left-0 h-full transition-all duration-1000 ease-out opacity-20`} style={{ width: `${percentage}%`, backgroundColor: barColor }}></div>
                         <div className="relative z-10 flex items-center justify-between w-full p-4 h-14">
                           <div className="flex items-center gap-4">
-                            <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-sm font-bold text-[#5767D0] shadow-sm">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shadow-sm transition-colors ${isCorrect ? 'bg-[#22C55E] text-white' : isMyVote ? 'bg-[#4F0DCE] text-white' : 'bg-white text-[#4F0DCE]'}`}>
                               {index + 1}
                             </div>
-                            <span className="font-semibold text-[#111111] max-w-[80%] truncate">
+                            <span className="font-semibold text-[#373737] max-w-[80%] truncate">
                               {option}
+                              {isMyVote && !isCorrect && <span className="ml-2 text-[10px] uppercase tracking-wider font-bold text-[#4F0DCE] bg-[#4F0DCE]/10 px-2 py-0.5 rounded-full">You</span>}
+                              {isCorrect && <span className="ml-2 text-[10px] uppercase tracking-wider font-bold text-[#22C55E] bg-[#22C55E]/10 px-2 py-0.5 rounded-full">Correct</span>}
                             </span>
                           </div>
-                          <span className="font-bold text-[#111111]">{percentage}%</span>
+                          <span className="font-bold text-[#373737]">{percentage}%</span>
                         </div>
                       </div>
                     )
                   })}
 
                   <div className="mt-8 text-center text-[#111111] font-bold text-lg animate-pulse">
-                    Wait for the teacher to ask a new question..
+                    {currentPoll.correctOptionIndex !== undefined ? "Poll Ended" : "Live Results"}
                   </div>
                 </>
               ) : (
-                /* VOTING STATE */
+                /* VOTING STATE (Poll Active, Not Voted) */
                 <>
                   {currentPoll.options.map((option: string, index: number) => (
                     <button
                       key={option}
                       onClick={() => setSelectedOption(option)}
-                      disabled={(remainingTime || 0) <= 0} // Fix safely accessing remainingTime
+                      disabled={(remainingTime || 0) <= 0}
                       className={`w-full text-left p-4 rounded-md border-2 transition-all duration-200 group flex items-center bg-[#F9F9F9] hover:bg-white
-                          ${selectedOption === option
-                          ? 'border-[#7765DA] shadow-[0_0_0_1px_#7765DA] bg-white'
-                          : 'border-transparent hover:border-[#7765DA]/50 hover:shadow-sm'
-                        }
+                          ${selectedOption === option ? 'border-[#7765DA] shadow-[0_0_0_1px_#7765DA] bg-white' : 'border-transparent hover:border-[#7765DA]/50 hover:shadow-sm'}
                         `}
                     >
-                      {/* Circle Number */}
                       <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold mr-4 transition-colors
-                            ${selectedOption === option
-                          ? 'bg-[#7765DA] text-white'
-                          : 'bg-[#9E9E9E] text-white group-hover:bg-[#7765DA]/70'
-                        }`}>
+                            ${selectedOption === option ? 'bg-[#7765DA] text-white' : 'bg-[#9E9E9E] text-white group-hover:bg-[#7765DA]/70'}`}>
                         {index + 1}
                       </div>
-
-                      <span className="font-medium text-[#373737] text-lg">
-                        {option}
-                      </span>
+                      <span className="font-medium text-[#373737] text-lg">{option}</span>
                     </button>
                   ))}
 
@@ -280,4 +270,3 @@ export function StudentInterface({
     </div>
   )
 }
-
